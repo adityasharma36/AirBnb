@@ -12,25 +12,26 @@ import (
 
 func ConectToDb() (*sql.DB,error){
 
-	cfg := mysql.NewConfig();
+	cfg := mysql.Config{
+    User:             config.GetString("DB_User" , "root"),
+    Passwd:           config.GetString("DB_Passwd","root"),
+    Net:              config.GetString("DB_NET","tcp"),
+    Addr:             config.GetString("DB_Addr","127.0.0.1:3306"),
+    DBName:           config.GetString("DB_Name","auth_dev"),
+    ParseTime:        true,
+    AllowNativePasswords: true, // Often needed depending on your MySQL version
+}
 
-	cfg.User = config.GetString("DB_User" , "root");
-	cfg.Passwd = config.GetString("DB_Passwd","root");
-	cfg.Net = config.GetString("DB_NET","tcp");
-	cfg.DBName = config.GetString("DB_Name","auth_dev");
-	cfg.Addr = config.GetString("DB_Addr","127.0.0.1:3306");
-
-
-	fmt.Println("Connected to Db",cfg.DBName);
-
+	
+	
 	db, err :=sql.Open("mysql",cfg.FormatDSN())
-
+	
 	if err != nil{
 		fmt.Println("failed to connected Db",err)
 		return nil, err;
 	}
 
-	fmt.Println("connecting to DB ....")
+
 
 	ping := db.Ping();
 

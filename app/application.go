@@ -48,7 +48,7 @@ func (app *Application) Run() error {
 		return err;
 	}
 	ur:= db.NewUserRepository(database)
-	us:= service.NewService(ur);
+	us:= service.NewUserService(ur);
 	uc := controllers.NewUserController(us);
 	uRouter := router.NewUserRouter(uc);
 	

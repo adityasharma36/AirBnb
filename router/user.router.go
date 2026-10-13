@@ -2,6 +2,7 @@ package router
 
 import (
 	"goMod/controllers"
+	"goMod/middleware"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -20,5 +21,9 @@ func NewUserRouter(_userController *controllers.UserController) Router{
 
 func (ur * UserRouter) Register(r chi.Router){
 	// r.Post("/signup",ur.UserController.RegisterUser)
+	r.With(middleware.LoginMiddleware).Post("/login",ur.UserController.LoginUser)
+	r.With(middleware.CreateUserMiddleware).Post("/create",ur.UserController.CreateUser)
 	r.Get("/profile",ur.UserController.GetUser);
+	
+
 }
