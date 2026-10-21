@@ -23,7 +23,7 @@ func (ur * UserRouter) Register(r chi.Router){
 	// r.Post("/signup",ur.UserController.RegisterUser)
 	r.With(middleware.LoginMiddleware).Post("/login",ur.UserController.LoginUser)
 	r.With(middleware.CreateUserMiddleware).Post("/create",ur.UserController.CreateUser)
-	r.Get("/profile",ur.UserController.GetUser);
+	r.With(middleware.JWTMiddlewareAuth).Get("/profile",ur.UserController.GetUser);
 	
 
 }

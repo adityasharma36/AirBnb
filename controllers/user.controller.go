@@ -2,7 +2,8 @@ package controllers
 
 import (
 	"database/sql"
-	
+	"fmt"
+
 	"net/http"
 	"strconv"
 
@@ -117,8 +118,12 @@ func (u *UserController) GetUser(
     r *http.Request,
 ) {
 
-    idValue := r.URL.Query().Get("id")
+    idValue := r.URL.Query().Get("id") 
 
+    if idValue == ""{
+        idValue =  r.Context().Value("userId").(string)
+    }
+    fmt.Println(idValue)
     id, err := strconv.ParseInt(idValue, 10, 64)
     if err != nil || id <= 0 {
         helper.WriteJsonErrResponse(

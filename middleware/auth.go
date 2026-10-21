@@ -1,89 +1,78 @@
+
 package middleware
 
 import (
 	"context"
+	"fmt"
+	"goMod/config"
 	"net/http"
+	"strings"
 
-	"goMod/dto"
-	"goMod/utils/helper"
+	"github.com/golang-jwt/jwt/v5"
 )
 
+type ContextKey string
 
+const (
+	UserIDKey ContextKey = "userId"
+	EmailKey  ContextKey = "email"
+)
 
-func LoginMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodPost {
-            next.ServeHTTP(w, r)
-            return
-        }
+func JWTMiddlewareAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-        var payload dto.LoginUserRequestDTO
+		authHeader := r.Header.Get("Authorization")
 
-        if err := helper.ReadJsonBody(r, &payload); err != nil {
-            helper.WriteJsonErrResponse(
-                w,
-                http.StatusBadRequest,
-                "Invalid request body",
-                err,
-            )
-            return
-        }
+		if authHeader == "" {
+			http.Error(w, "Authorization Header not present", http.StatusUnauthorized)
+			return
+		}
 
-        if err := helper.ValidateStruct(payload); err != nil {
-            helper.WriteJsonErrResponse(
-                w,
-                http.StatusBadRequest,
-                "Validation failed",
-                err,
-            )
-            return
-        }
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Authorization Token not present", http.StatusUnauthorized)
+			return
+		}
 
-        ctx := context.WithValue(
-            r.Context(),
-            dto.PayloadKey,
-            &payload,
-        )
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
+		if tokenString == "" {
+			http.Error(w, "Token is Required", http.StatusUnauthorized)
+			return
+		}
 
-func CreateUserMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodPost {
-            next.ServeHTTP(w, r)
-            return
-        }
+		claims := jwt.MapClaims{}
 
-        var payload dto.CreateUserRequestDTO
+		token, err := jwt.ParseWithClaims(
+			tokenString,
+			claims,
+			func(token *jwt.Token) (interface{}, error) {
 
-        if err := helper.ReadJsonBody(r, &payload); err != nil {
-            helper.WriteJsonErrResponse(
-                w,
-                http.StatusBadRequest,
-                "Invalid request body",
-                err,
-            )
-            return
-        }
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method")
+				}
 
-        if err := helper.ValidateStruct(payload); err != nil {
-            helper.WriteJsonErrResponse(
-                w,
-                http.StatusBadRequest,
-                "Validation failed",
-                err,
-            )
-            return
-        }
+				return []byte(config.GetString("JWT_STRING", "token")), nil
+			},
+		)
 
-        ctx := context.WithValue(
-            r.Context(),
-            dto.UserCreateKey,
-            &payload,
-        )
+		if err != nil || token == nil || !token.Valid {
+			http.Error(w, "Token Not Correct", http.StatusUnauthorized)
+			return
+		}
 
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
+		userId, okId := claims["id"].(string)
+		email, okEmail := claims["email"].(string)
+
+		if !okId || !okEmail || userId == "" || email == "" {
+			http.Error(w, "Invalid Token Error", http.StatusUnauthorized)
+			return
+		}
+
+		fmt.Println("User id is:", userId, "Email is:", email)
+
+		ctx := context.WithValue(r.Context(), UserIDKey, userId)
+		ctx = context.WithValue(ctx, EmailKey, email)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
